@@ -1,22 +1,31 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-export default function Login() {
+export default function Registro() {
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
+  const handleRegister = (e) => {
     e.preventDefault();
-    console.log("Datos de login:", { email, password });
+    console.log("Nuevo usuario:", { nombre, email, password });
   };
 
   return (
     <div style={styles.background}>
       <div style={styles.card}>
-        <h2 style={styles.title}>Bienvenido a POCOYO</h2>
-        <p style={styles.subtitle}>Inicia sesión para continuar</p>
+        <h2 style={styles.title}>Crear Cuenta</h2>
+        <p style={styles.subtitle}>Regístrate para comenzar</p>
 
-        <form onSubmit={handleLogin} style={styles.form}>
+        <form onSubmit={handleRegister} style={styles.form}>
+          <input
+            type="text"
+            placeholder="Nombre completo"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            style={styles.input}
+            required
+          />
           <input
             type="email"
             placeholder="Correo electrónico"
@@ -33,11 +42,11 @@ export default function Login() {
             style={styles.input}
             required
           />
-          <button type="submit" style={styles.button}>Ingresar</button>
+          <button type="submit" style={styles.button}>Registrarse</button>
         </form>
 
         <p style={styles.linkText}>
-          ¿No tienes cuenta? <Link to="/registro" style={styles.link}>Regístrate</Link>
+          ¿Ya tienes cuenta? <Link to="/" style={styles.link}>Inicia sesión</Link>
         </p>
       </div>
     </div>
@@ -107,3 +116,4 @@ const styles = {
     textDecoration: "none",
   },
 };
+    
