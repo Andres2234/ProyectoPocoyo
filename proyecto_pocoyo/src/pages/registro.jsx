@@ -5,10 +5,46 @@ export default function Registro() {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [errorTelefono, setErrorTelefono] = useState("");
+  const [errorPassword, setErrorPassword] = useState("");
+
+  const handleTelefonoChange = (e) => {
+    const value = e.target.value;
+
+    // Solo permitir números al escribir
+    if (!/^\d*$/.test(value)) return;
+
+    setTelefono(value);
+
+    // Validar formato completo
+    if (!/^9\d{8}$/.test(value)) {
+      setErrorTelefono("Debe tener 9 dígitos y empezar con 9");
+    } else {
+      setErrorTelefono("");
+    }
+  };
 
   const handleRegister = (e) => {
     e.preventDefault();
-    console.log("Nuevo usuario:", { nombre, email, password });
+
+    // Validar contraseñas
+    if (password !== password2) {
+      setErrorPassword("Las contraseñas no coinciden");
+      return;
+    }
+
+    // Validar teléfono final
+    if (!/^9\d{8}$/.test(telefono)) {
+      setErrorTelefono("Número de teléfono inválido");
+      return;
+    }
+
+    setErrorPassword("");
+    setErrorTelefono("");
+
+    console.log("Nuevo usuario:", { nombre, email, password, telefono });
   };
 
   return (
@@ -26,6 +62,7 @@ export default function Registro() {
             style={styles.input}
             required
           />
+
           <input
             type="email"
             placeholder="Correo electrónico"
@@ -34,6 +71,7 @@ export default function Registro() {
             style={styles.input}
             required
           />
+
           <input
             type="password"
             placeholder="Contraseña"
@@ -42,7 +80,47 @@ export default function Registro() {
             style={styles.input}
             required
           />
-          <button type="submit" style={styles.button}>Registrarse</button>
+
+          <input
+            type="password"
+            placeholder="Repite la contraseña"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            style={styles.input}
+            required
+          />
+
+          {errorPassword && (
+            <p style={{ color: "red" }}>{errorPassword}</p>
+          )}
+
+          <input
+            type="text"
+            placeholder="Teléfono"
+            value={telefono}
+            onChange={handleTelefonoChange}
+            onPaste={(e) => {
+              // Bloquear pegado si contiene algo que no sea números
+              if (!/^\d+$/.test(e.clipboardData.getData("text"))) {
+                e.preventDefault();
+              }
+            }}
+            maxLength={9}
+            style={styles.input}
+            required
+          />
+
+          {errorTelefono && (
+            <p style={{ color: "red" }}>{errorTelefono}</p>
+          )}
+
+          <button
+            type="submit"
+            style={styles.button}
+            disabled={errorTelefono !== "" || errorPassword !== ""}
+          >
+            Registrarse
+          </button>
         </form>
 
         <p style={styles.linkText}>
@@ -52,6 +130,7 @@ export default function Registro() {
     </div>
   );
 }
+
 
 const styles = {
   background: {
