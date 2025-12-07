@@ -1,0 +1,76 @@
+-- DDL para la Base de Datos PocoyoDB en MySQL
+-- Columnas traducidas a español (excepto IDs que se mantienen cortos)
+
+CREATE DATABASE IF NOT EXISTS PocoyoDB;
+USE PocoyoDB;
+
+CREATE TABLE Proyectos (
+    ProyectoID INT PRIMARY KEY AUTO_INCREMENT,
+    NombreProyecto VARCHAR(100) NOT NULL,
+    CreadoEn DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Usuarios (
+    UsuarioID INT PRIMARY KEY AUTO_INCREMENT,
+    NombreUsuario VARCHAR(50) NOT NULL UNIQUE,
+    Email VARCHAR(100) NOT NULL UNIQUE,
+    Telefono VARCHAR(15) UNIQUE NULL, 
+    PasswordHash VARCHAR(255) NOT NULL, 
+    CreadoEn DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Listas (
+    ListaID INT PRIMARY KEY AUTO_INCREMENT,
+    ProyectoID INT NOT NULL,
+    NombreLista VARCHAR(50) NOT NULL,
+    Orden INT NOT NULL, 
+    
+    FOREIGN KEY (ProyectoID) 
+    REFERENCES Proyectos(ProyectoID) 
+    ON DELETE CASCADE 
+);
+
+CREATE TABLE Tarjetas (
+    TarjetaID INT PRIMARY KEY AUTO_INCREMENT,
+    ListaID INT NOT NULL,
+    Titulo VARCHAR(255) NOT NULL,
+    Descripcion TEXT,
+    CreadoEn DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Orden INT NOT NULL,
+    
+    FOREIGN KEY (ListaID) 
+    REFERENCES Listas(ListaID)
+    ON DELETE CASCADE 
+);
+
+CREATE TABLE AsignacionesTarjeta (
+    AsignacionID INT PRIMARY KEY AUTO_INCREMENT,
+    TarjetaID INT NOT NULL,
+    UsuarioID INT NOT NULL,
+    
+    FOREIGN KEY (TarjetaID) REFERENCES Tarjetas(TarjetaID) ON DELETE CASCADE,
+    FOREIGN KEY (UsuarioID) REFERENCES Usuarios(UsuarioID) ON DELETE CASCADE,
+    
+    UNIQUE KEY unica_tarjeta_usuario (TarjetaID, UsuarioID) 
+);
+
+
+INSERT INTO Proyectos (NombreProyecto) VALUES ('Proyecto POCOYO');
+SET @ProyectoID = LAST_INSERT_ID();
+
+INSERT INTO Listas (ProyectoID, NombreLista, Orden) VALUES
+(@ProyectoID, 'Lista de tareas', 1),
+(@ProyectoID, 'En proceso', 2),
+(@ProyectoID, 'Hecho', 3);
+
+SET @Lista2ID = (SELECT ListaID FROM Listas WHERE NombreLista = 'En proceso' AND ProyectoID = @ProyectoID);
+SET @Lista3ID = (SELECT ListaID FROM Listas WHERE NombreLista = 'Hecho' AND ProyectoID = @ProyectoID);
+
+INSERT INTO Tarjetas (ListaID, Titulo, Orden) VALUES
+(@Lista2ID, 'Crear base de datos para el proyecto', 1),
+(@Lista2ID, 'Crear vista de registro de usuario', 2),
+(@Lista3ID, 'Realizar Análisis del Sistema del Proyecto', 1);
+
+ALTER TABLE Tarjetas
+ADD COLUMN FechaLimite DATE NULL,         
+ADD COLUMN HoraNotificacion TIME NULL;    
