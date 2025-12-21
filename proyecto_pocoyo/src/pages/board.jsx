@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { DragDropContext, Droppable } from '@hello-pangea/dnd'; 
-import List
+import List from './list'
 import CalendarSidebar from './calendarioSideBar';
 
 const API_BASE_URL = 'http://localhost:5000/api';
