@@ -6,10 +6,7 @@ html, body, #root {
 }
 
 body {
-  display: flex;
-  justify-content: center; /* centra horizontal */
-  align-items: center;     /* centra vertical */
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #242424; /* tu fondo */
+  margin: 0;
+  padding: 0;
+  background-color: #242424;
 }

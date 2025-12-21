@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { DragDropContext, Droppable } from '@hello-pangea/dnd'; 
-import List from './List';
+import List
+import CalendarSidebar from './calendarioSideBar';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 const PROJECT_ID = 1; 
@@ -11,35 +12,43 @@ const Board = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState("");
+
   
   const user = JSON.parse(localStorage.getItem('user'));
   const username = user ? user.username : 'Usuario';
   
+  
+
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/');
   };
 
-  const fetchBoardData = async () => {
-    const token = localStorage.getItem('token'); 
-    if (!token) {
-      setError("No estás autenticado. Redirigiendo al login...");
-      setTimeout(() => navigate('/'), 1500); 
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setError(null);
+ const fetchBoardData = async (date = "") => {
+  const token = localStorage.getItem('token'); 
+  if (!token) {
+    setError("No estás autenticado. Redirigiendo al login...");
+    setTimeout(() => navigate('/'), 1500); 
+    return;
+  }
 
-      const response = await fetch(`${API_BASE_URL}/board/${PROJECT_ID}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`, 
-          'Content-Type': 'application/json',
-        },
-      });
+  try {
+    setLoading(true);
+    setError(null);
+
+    const query = date ? `?day=${date}` : "";
+
+    const response = await fetch(`${API_BASE_URL}/board/${PROJECT_ID}${query}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`, 
+        'Content-Type': 'application/json',
+      },
+    });
+
       
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('token');
@@ -63,6 +72,12 @@ const Board = () => {
       setLoading(false);
     }
   };
+
+  const handleDateChange = (date) => {
+  setSelectedDate(date);
+  fetchBoardData(date);
+};
+
 
   useEffect(() => {
     fetchBoardData();
@@ -125,48 +140,56 @@ const Board = () => {
   if (error) return (<div style={{padding: '50px', color: '#c0392b', textAlign: 'center', backgroundColor: '#fbe8e7', border: '1px solid #c0392b', minHeight: '100vh'}}>{error}</div>);
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}> 
-        <div style={{backgroundColor: '#2c3e50', minHeight: '100vh', color: '#ecf0f1', padding: '20px'}}>
-            
-            <header style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-                <div>
-                    <h1 style={{margin: 0}}>Proyecto POCOYO</h1>
-                    <p style={{margin: 0, fontSize: '14px'}}>Bienvenido, **{username}**</p>
-                </div>
-                <button 
-                    onClick={handleLogout}
-                    style={{padding: '8px 15px', backgroundColor: '#c0392b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
-                    Cerrar Sesión
-                </button>
-            </header>
+   <DragDropContext onDragEnd={onDragEnd}>
+  <div style={{ display: "flex", backgroundColor: '#2c3e50', minHeight: '100vh', color: '#ecf0f1' }}>
+    
+    {/* === COLUMNA LATERAL DEL CALENDARIO === */}
+    <CalendarSidebar
+      selectedDate={selectedDate}
+      onDateChange={handleDateChange}
+    />
 
-            <Droppable droppableId="board-droppable" direction="horizontal" type="list">
-                {(provided) => (
-                    <div 
-                        ref={provided.innerRef} 
-                        {...provided.droppableProps}
-                        style={{display: 'flex', gap: '15px', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '10px'}}
-                    >
-                        {lists.map((list) => (
-                            <List
-                                key={list.ListaID}
-                                list={list}
-                                refreshBoard={fetchBoardData}
-                            />
-                        ))}
-                        {provided.placeholder}
-                        
-                        <div style={{width: '272px', flexShrink: 0}}>
-                            <button style={{width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', textAlign: 'left', cursor: 'pointer'}}>
-                                + Añadir otra lista
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </Droppable>
+    {/* === CONTENIDO PRINCIPAL === */}
+    <div style={{ flex: 1, padding: '20px', color: "#ecf0f1",
+    backgroundImage: "url('/img/fondoPoco.gif')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat", }}>
+      <header style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+          <div>
+              <h1 style={{margin: 0}}>Proyecto POCOYO</h1>
+              <p style={{margin: 0, fontSize: '14px'}}>Bienvenido, **{username}**</p>
+          </div>
+          <button 
+              onClick={handleLogout}
+              style={{padding: '8px 15px', backgroundColor: '#c0392b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
+              Cerrar Sesión
+          </button>
+      </header>
 
-        </div>
-    </DragDropContext>
+      <Droppable droppableId="board-droppable" direction="horizontal" type="list">
+          {(provided) => (
+              <div 
+                  ref={provided.innerRef} 
+                  {...provided.droppableProps}
+                  style={{display: 'flex', gap: '15px', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '10px'}}
+              >
+                  {lists.map((list) => (
+                      <List
+                          key={list.ListaID}
+                          list={list}
+                          refreshBoard={fetchBoardData}
+                      />
+                  ))}
+
+                  {provided.placeholder}
+              </div>
+          )}
+      </Droppable>
+    </div>
+  </div>
+</DragDropContext>
+
   );
 };
 

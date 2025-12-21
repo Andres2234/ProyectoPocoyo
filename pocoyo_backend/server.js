@@ -132,6 +132,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/board/:projectId', verifyToken, async (req, res) => {
     const { projectId } = req.params;
+    const { day } = req.query;
     let connection;
 
     try {
@@ -147,16 +148,26 @@ app.get('/api/board/:projectId', verifyToken, async (req, res) => {
             [projectId]
         );
 
-        const [cards] = await connection.execute(
-            `
-            SELECT c.TarjetaID, c.ListaID, c.Titulo, c.Descripcion, c.Orden
+        // Si hay día → filtrar por fecha
+        let cardsQuery = `
+            SELECT c.TarjetaID, c.ListaID, c.Titulo, c.Descripcion, c.Orden, c.Fecha
             FROM Tarjetas c
             INNER JOIN Listas l ON c.ListaID = l.ListaID
             WHERE l.ProyectoID = ?
-            ORDER BY c.Orden
-            `, 
-            [projectId]
-        );
+        `;
+
+        const params = [projectId];
+
+        if (day) {
+            cardsQuery += ` AND DATE(c.Fecha) = ?`;  // 👈 Filtrar por día
+            params.push(day);
+        }
+
+        cardsQuery += ` ORDER BY c.Orden`;
+
+        const [cards] = await connection.execute(cardsQuery, params);
+
+
 
         const boardData = lists.map(list => ({
             ListaID: list.ListaID,

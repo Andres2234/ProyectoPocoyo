@@ -163,65 +163,80 @@ export default function Registro() {
 
 
 const styles = {
-  background: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "linear-gradient(135deg, #6B73FF 0%, #000DFF 100%)",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: "15px",
-    padding: "40px",
-    width: "350px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-    textAlign: "center",
-  },
-  title: {
-    margin: "0 0 10px 0",
-    fontSize: "28px",
-    fontWeight: "700",
-    color: "#333",
-  },
-  subtitle: {
-    margin: "0 0 30px 0",
-    fontSize: "14px",
-    color: "#666",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-  },
-  input: {
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    fontSize: "14px",
-    outline: "none",
-    transition: "all 0.2s ease",
-  },
-  button: {
-    padding: "12px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#6B73FF",
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
-  linkText: {
-    marginTop: "20px",
-    fontSize: "14px",
-    color: "#666",
-  },
-  link: {
-    color: "#6B73FF",
-    fontWeight: "600",
-    textDecoration: "none",
-  },
+  background: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: `
+      url('/img/pocoyoRegistrar.gif')
+      no-repeat center center / cover
+    `,
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
+
+  card: {
+    background: "rgba(255, 255, 255, 0.25)",      // transparencia
+    backdropFilter: "blur(8px)",                  // efecto vidrio
+    borderRadius: "15px",
+    padding: "40px",
+    width: "350px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+    textAlign: "center",
+    border: "1px solid rgba(255,255,255,0.4)",
+  },
+
+  title: {
+    margin: "0 0 10px 0",
+    fontSize: "28px",
+    fontWeight: "700",
+    color: "#545151ff",
+    textShadow: "0 0 5px rgba(0,0,0,0.3)",
+  },
+
+  subtitle: {
+    margin: "0 0 30px 0",
+    fontSize: "14px",
+    color: "#545151ff",
+  },
+
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "15px",
+  },
+
+  input: {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid rgba(255,255,255,0.4)",
+    fontSize: "14px",
+    outline: "none",
+    background: "rgba(255,255,255,0.3)",
+    color: "#000",
+  },
+
+  button: {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "none",
+    backgroundColor: "#6B73FF",
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: "16px",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  },
+
+  linkText: {
+    marginTop: "20px",
+    fontSize: "14px",
+    color: "#545151ff",
+  },
+
+  link: {
+    color: "#403c3cff",
+    fontWeight: "600",
+    textDecoration: "underline",
+  },
 };

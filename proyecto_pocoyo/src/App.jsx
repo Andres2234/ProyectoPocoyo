@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Login from './pages/login'
 import Registro from './pages/registro'
-import Board from './pages/board'
+import Board from './pages/Board'
+
 
 function App() {
   return (

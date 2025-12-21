@@ -1,4 +1,3 @@
-// kanban-frontend/src/components/List.jsx
 
 import React, { useState } from 'react'; // 👈 Importar useState
 import { Droppable, Draggable } from '@hello-pangea/dnd'; 
@@ -68,10 +67,18 @@ const List = ({ list, refreshBoard }) => {
     }
 
     return (
-        <div style={{flexShrink: 0, width: '272px', backgroundColor: '#f1f2f4', borderRadius: '8px', padding: '10px', maxHeight: 'calc(100vh - 100px)'}}>
+        <div style={{flexShrink: 0, width: '272px',     // 🔥 Transparencia suave sin blur
+        backgroundColor: "rgba(255, 255, 255, 0.25)",  
+        borderRadius: "12px",
+        border: "1px solid rgba(255, 255, 255, 0.35)",
+        boxShadow: "0 6px 18px rgba(0, 0, 0, 0.25)",
+
+        padding: "10px",
+        maxHeight: "calc(100vh - 100px)"
+       }}>
             
             <div style={{padding: '5px 0'}}>
-                <h3 style={{fontSize: '16px', fontWeight: 600, margin: 0}}>{NombreLista} ({cards.length})</h3>
+                <h3 style={{fontSize: '16px', fontWeight: 600, margin: 0, color:'#050505ff'}}>{NombreLista} ({cards.length})</h3>
             </div>
             
             {/* Droppable Container */}
@@ -85,7 +92,7 @@ const List = ({ list, refreshBoard }) => {
                             overflowY: 'auto', 
                             maxHeight: 'calc(100vh - 200px)',
                             padding: '8px',
-                            backgroundColor: snapshot.isDraggingOver ? '#e2e4e6' : 'transparent',
+                            backgroundColor: snapshot.isDraggingOver ? '#5e8ebfff' : 'transparent',
                             borderRadius: '5px'
                         }}
                     >
