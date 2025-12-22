@@ -3,6 +3,8 @@ const mysql = require('mysql2/promise');
 const cors = require('cors');
 const bcrypt = require('bcrypt'); 
 const jwt = require('jsonwebtoken'); 
+const cron = require('node-cron');
+const axios = require('axios');
 
 const app = express();
 const port = 5000; 
@@ -19,6 +21,9 @@ const dbConfig = {
 
 app.use(cors()); 
 app.use(express.json()); 
+
+
+
 
 const getConnection = async () => {
     return await mysql.createConnection(dbConfig);
@@ -129,45 +134,54 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-
 app.get('/api/board/:projectId', verifyToken, async (req, res) => {
     const { projectId } = req.params;
     const { day } = req.query;
+    const userId = req.user.userId;
+
     let connection;
 
     try {
         connection = await getConnection();
-        
+
+        // Listas
         const [lists] = await connection.execute(
             `
-            SELECT ListaID, NombreLista, Orden 
-            FROM Listas 
-            WHERE ProyectoID = ? 
+            SELECT ListaID, NombreLista, Orden
+            FROM Listas
+            WHERE ProyectoID = ?
             ORDER BY Orden
-            `, 
+            `,
             [projectId]
         );
 
-        // Si hay día → filtrar por fecha
+        // Tarjetas SOLO asignadas al usuario
         let cardsQuery = `
-            SELECT c.TarjetaID, c.ListaID, c.Titulo, c.Descripcion, c.Orden, c.Fecha
+            SELECT 
+                c.TarjetaID,
+                c.ListaID,
+                c.Titulo,
+                c.Descripcion,
+                c.Orden,
+                c.FechaLimite,
+                c.HoraNotificacion
             FROM Tarjetas c
             INNER JOIN Listas l ON c.ListaID = l.ListaID
+            INNER JOIN AsignacionesTarjeta a ON a.TarjetaID = c.TarjetaID
             WHERE l.ProyectoID = ?
+              AND a.UsuarioID = ?
         `;
 
-        const params = [projectId];
+        const params = [projectId, userId];
 
         if (day) {
-            cardsQuery += ` AND DATE(c.Fecha) = ?`;  // 👈 Filtrar por día
+            cardsQuery += ` AND DATE(c.FechaLimite) = ?`;
             params.push(day);
         }
 
         cardsQuery += ` ORDER BY c.Orden`;
 
         const [cards] = await connection.execute(cardsQuery, params);
-
-
 
         const boardData = lists.map(list => ({
             ListaID: list.ListaID,
@@ -179,12 +193,14 @@ app.get('/api/board/:projectId', verifyToken, async (req, res) => {
         res.json(boardData);
 
     } catch (err) {
-        console.error('Error al obtener el tablero:', err);
-        res.status(500).send('Error interno del servidor al cargar el tablero.');
+        console.error(err);
+        res.status(500).send('Error al cargar tablero');
     } finally {
         if (connection) connection.end();
     }
 });
+
+
 app.put('/api/cards/move', verifyToken, async (req, res) => {
     const { cardId, newListId, newIndex, destinationCards } = req.body;
     let connection;
@@ -222,6 +238,7 @@ app.put('/api/cards/move', verifyToken, async (req, res) => {
         if (connection) connection.end();
     }
 });
+
 app.post('/api/cards', verifyToken, async (req, res) => {
     const { 
         ListaID, 
@@ -230,54 +247,211 @@ app.post('/api/cards', verifyToken, async (req, res) => {
         FechaLimite, 
         HoraNotificacion 
     } = req.body;
-    
-    const userId = req.user ? req.user.userId : null;
+
+    const userId = req.user?.userId;
     if (!userId) {
-        return res.status(401).json({ message: 'Token inválido o usuario no identificado.' });
+        return res.status(401).json({ message: 'Usuario no autenticado' });
     }
 
     let connection;
 
     try {
         connection = await getConnection();
+        await connection.beginTransaction(); // 🔒 importante
 
+        // Obtener orden
         const [result] = await connection.execute(
             'SELECT MAX(Orden) AS max_orden FROM Tarjetas WHERE ListaID = ?',
             [ListaID]
         );
-        
-        const newOrder = (result[0].max_orden !== null ? result[0].max_orden : -1) + 1;
 
-        const [insertResult] = await connection.execute(
-            `INSERT INTO Tarjetas 
-            (ListaID, Titulo, Descripcion, Orden,  FechaLimite, HoraNotificacion) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
+        const newOrder = (result[0].max_orden ?? -1) + 1;
+
+        // 1️⃣ Crear tarjeta
+        const [insertCard] = await connection.execute(
+            `
+            INSERT INTO Tarjetas 
+            (ListaID, Titulo, Descripcion, Orden, FechaLimite, HoraNotificacion)
+            VALUES (?, ?, ?, ?, ?, ?)
+            `,
             [
-                ListaID, 
-                Titulo, 
-                Descripcion, 
-                newOrder, 
-                FechaLimite || null, 
-                HoraNotificacion || null 
-            ] 
+                ListaID,
+                Titulo,
+                Descripcion,
+                newOrder,
+                FechaLimite || null,
+                HoraNotificacion || null
+            ]
         );
-        res.status(201).json({ 
-            TarjetaID: insertResult.insertId,
+
+        const tarjetaId = insertCard.insertId;
+
+        // 2️⃣ Asignar tarjeta al usuario creador
+        await connection.execute(
+            `
+            INSERT INTO AsignacionesTarjeta (TarjetaID, UsuarioID)
+            VALUES (?, ?)
+            `,
+            [tarjetaId, userId]
+        );
+
+        await connection.commit(); 
+        
+        res.status(201).json({
+            TarjetaID: tarjetaId,
             ListaID,
             Titulo,
             Descripcion,
             Orden: newOrder,
             FechaLimite,
-            HoraNotificacion
+            HoraNotificacion,
+            assignedTo: userId
         });
 
     } catch (err) {
-        console.error('Error al crear la tarjeta:', err);
-        res.status(500).json({ message: 'Error interno del servidor al crear la tarjeta.', error: err.message });
+        if (connection) await connection.rollback(); 
+        console.error('Error al crear tarjeta:', err);
+        res.status(500).json({ message: 'Error al crear la tarjeta' });
     } finally {
         if (connection) connection.end();
     }
 });
+
+app.put('/api/cards/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { Titulo, Descripcion, FechaLimite, HoraNotificacion } = req.body;
+
+  let connection;
+
+  try {
+    connection = await getConnection();
+
+    await connection.execute(
+      `
+      UPDATE Tarjetas
+      SET Titulo = ?, 
+          Descripcion = ?, 
+          FechaLimite = ?, 
+          HoraNotificacion = ?
+      WHERE TarjetaID = ?
+      `,
+      [
+        Titulo,
+        Descripcion,
+        FechaLimite || null,
+        HoraNotificacion || null,
+        id
+      ]
+    );
+
+    res.json({ message: 'Tarjeta actualizada correctamente' });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al actualizar tarjeta' });
+  } finally {
+    if (connection) connection.end();
+  }
+});
+
+
+app.delete("/api/cards/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const connection = await getConnection();
+
+  await connection.execute(
+    "DELETE FROM Tarjetas WHERE TarjetaID = ?",
+    [id]
+  );
+
+  res.json({ message: "Tarjeta eliminada" });
+});
+
+
+cron.schedule('*/1 * * * *', async () => {
+    let connection;
+
+    try {
+        console.log('⏳ CRON: revisando tareas...');
+
+        connection = await getConnection();
+
+        // 🔔 15 MIN ANTES
+        const [antes15] = await connection.execute(`
+            SELECT 
+                t.TarjetaID,
+                t.Titulo,
+                t.Descripcion,
+                t.FechaLimite,
+                t.HoraNotificacion,
+                u.NombreUsuario,
+                u.Telefono
+            FROM tarjetas t
+            JOIN usuarios u ON u.UsuarioID = t.ListaID
+            WHERE 
+                t.Notificado15Min = 0
+                AND t.ListaID = 1
+                AND TIMESTAMP(t.FechaLimite, t.HoraNotificacion)
+                BETWEEN DATE_ADD(NOW(), INTERVAL 14 MINUTE)
+                AND DATE_ADD(NOW(), INTERVAL 16 MINUTE)
+        `);
+
+        for (const t of antes15) {
+            await axios.post('http://localhost:3000/send-message', {
+                token: 'qmx4owznrctvd3n4lytihgrmbiusoj',
+                number: `51${t.Telefono}`,
+                message: `👋 Hola ${t.NombreUsuario}.\n\n⏳ Recuerda que en *15 minutos* tienes:\n📌 *${t.Titulo}*`
+            });
+
+
+            await connection.execute(
+                'UPDATE tarjetas SET Notificado15Min = 1 WHERE TarjetaID = ?',
+                [t.TarjetaID]
+            );
+        }
+
+        // ⏰ HORA EXACTA
+        const [horaExacta] = await connection.execute(`
+            SELECT 
+                t.TarjetaID,
+                t.Titulo,
+                t.Descripcion,
+                t.FechaLimite,
+                t.HoraNotificacion,
+                u.NombreUsuario,
+                u.Telefono
+            FROM tarjetas t
+            JOIN usuarios u ON u.UsuarioID = t.ListaID
+            WHERE 
+                t.NotificadoHora = 0
+                AND t.ListaID = 1
+                AND TIMESTAMP(t.FechaLimite, t.HoraNotificacion)
+                BETWEEN NOW()
+                AND DATE_ADD(NOW(), INTERVAL 2 MINUTE)
+        `);
+
+        for (const t of horaExacta) {
+            await axios.post('http://localhost:3000/send-message', {
+                token: 'qmx4owznrctvd3n4lytihgrmbiusoj',
+                number: `51${t.Telefono}`,
+                message: `⏰ Hola ${t.NombreUsuario}.\n\n📌 *Ya es hora de la tarea*\n\n📘 *${t.Titulo}*\n📝 ${t.Descripcion || ''}`
+            });
+
+            await connection.execute(
+                'UPDATE tarjetas SET NotificadoHora = 1 WHERE TarjetaID = ?',
+                [t.TarjetaID]
+            );
+        }
+
+        console.log('✅ CRON: revisión terminada');
+
+    } catch (err) {
+        console.error('❌ Error CRON:', err);
+    } finally {
+        if (connection) await connection.end();
+    }
+});
+
 
 app.listen(port, () => {
     console.log(`Servidor API escuchando en http://localhost:${port}`);

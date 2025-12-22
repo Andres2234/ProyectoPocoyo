@@ -1,207 +1,116 @@
-
-import React, { useState } from 'react'; // 👈 Importar useState
-import { Droppable, Draggable } from '@hello-pangea/dnd'; 
-import Card from './Card'; 
+import React, { useState } from 'react';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
+import Card from './Card';
+import AddModal from './addModal';
+import CardDetailModal from './CardDetailModal';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Recibe list y refreshBoard
-const List = ({ list, refreshBoard }) => { 
-    const { ListaID, NombreLista, cards } = list;
-    
-    // Estado para controlar la visibilidad del formulario de nueva tarjeta
-    const [isAdding, setIsAdding] = useState(false);
-    // Estado para el contenido del título de la nueva tarjeta
-    const [newCardTitle, setNewCardTitle] = useState('');
+const List = ({ list, refreshBoard }) => {
+  const { ListaID, NombreLista, cards } = list;
 
-    const handleAddCard = async () => {
-        if (!newCardTitle.trim()) {
-            return; // No hacer nada si el título está vacío
-        }
-        
-        const token = localStorage.getItem('token');
-        if (!token) {
-            alert("Error de autenticación. Por favor, vuelve a iniciar sesión.");
-            return;
-        }
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [modalMode, setModalMode] = useState(null); // 'create' | 'edit'
+  const [editingCard, setEditingCard] = useState(null);
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/cards`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, 
-                },
-                body: JSON.stringify({
-                    ListaID: ListaID,
-                    Titulo: newCardTitle.trim(),
-                    Descripcion: '', // La descripción es opcional por ahora
-                }),
-            });
+  const handleDeleteCard = async (cardId) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-            if (response.ok) {
-                // Limpiar el estado del formulario
-                setNewCardTitle('');
-                setIsAdding(false);
-                
-                // 🔑 Llamar a la función de Board para recargar todos los datos desde el servidor
-                refreshBoard(); 
-                
-            } else {
-                const errorData = await response.json();
-                alert(`Error al crear tarjeta: ${errorData.message}`);
-            }
+    if (!window.confirm('¿Eliminar esta tarjeta?')) return;
 
-        } catch (error) {
-            console.error('Error de red al añadir tarjeta:', error);
-            alert('No se pudo conectar al servidor para añadir la tarjeta.');
-        }
-    };
-    
-    // Función para manejar el Enter en el textarea
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Prevenir salto de línea
-            handleAddCard();
-        }
-    }
+    await fetch(`${API_BASE_URL}/cards/${cardId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    return (
-        <div style={{flexShrink: 0, width: '272px',     // 🔥 Transparencia suave sin blur
-        backgroundColor: "rgba(255, 255, 255, 0.25)",  
-        borderRadius: "12px",
-        border: "1px solid rgba(255, 255, 255, 0.35)",
-        boxShadow: "0 6px 18px rgba(0, 0, 0, 0.25)",
+    setSelectedCard(null);
+    refreshBoard();
+  };
 
-        padding: "10px",
-        maxHeight: "calc(100vh - 100px)"
-       }}>
-            
-            <div style={{padding: '5px 0'}}>
-                <h3 style={{fontSize: '16px', fontWeight: 600, margin: 0, color:'#050505ff'}}>{NombreLista} ({cards.length})</h3>
-            </div>
-            
-            {/* Droppable Container */}
-            <Droppable droppableId={String(ListaID)} type="card">
-                {(provided, snapshot) => (
-                    <div 
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        style={{
-                            // ... (estilos de Droppable) ...
-                            overflowY: 'auto', 
-                            maxHeight: 'calc(100vh - 200px)',
-                            padding: '8px',
-                            backgroundColor: snapshot.isDraggingOver ? '#5e8ebfff' : 'transparent',
-                            borderRadius: '5px'
-                        }}
-                    >
-                        {cards.map((card, index) => (
-                            // ... (Draggable Card component) ...
-                             <Draggable 
-                                key={String(card.TarjetaID)} 
-                                draggableId={String(card.TarjetaID)} 
-                                index={index}
-                            >
-                                {(provided, snapshot) => (
-                                    <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        style={{
-                                            ...provided.draggableProps.style,
-                                            backgroundColor: snapshot.isDragging ? 'lightgray' : 'white',
-                                            boxShadow: snapshot.isDragging ? '0 5px 10px rgba(0,0,0,0.3)' : '0 1px 0 rgba(9,30,66,.25)',
-                                            marginBottom: '8px'
-                                        }}
-                                    >
-                                        <Card 
-                                            TarjetaID={card.TarjetaID}
-                                            Titulo={card.Titulo} 
-                                            Description={card.Descripcion}
-                                            assignedUsers={card.TarjetaID % 2 === 0 ? ['MG'] : []} 
-                                        />
-                                    </div>
-                                )}
-                            </Draggable>
-                        ))}
-                        {provided.placeholder} 
-                    </div>
-                )}
-            </Droppable>
-            {/* Fin Droppable Container */}
+  const openCreateModal = () => {
+    setEditingCard(null);
+    setModalMode('create');
+  };
 
-            {/* Formulario de Adición de Tarjeta */}
-            {isAdding ? (
-                <div style={{marginTop: '10px'}}>
-                    <textarea
-                        value={newCardTitle}
-                        onChange={(e) => setNewCardTitle(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Introduce el título para esta tarjeta..."
-                        autoFocus
-                        style={{
-                            width: '100%',
-                            resize: 'none',
-                            border: 'none',
-                            borderRadius: '5px',
-                            padding: '8px',
-                            boxShadow: '0 1px 0 rgba(9,30,66,.1)',
-                            minHeight: '60px'
-                        }}
-                    />
-                    <div style={{display: 'flex', gap: '8px', marginTop: '5px'}}>
-                        <button 
-                            onClick={handleAddCard}
-                            style={{
-                                padding: '8px 12px', 
-                                backgroundColor: '#5aac44', 
-                                color: 'white', 
-                                border: 'none', 
-                                borderRadius: '4px', 
-                                cursor: 'pointer',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            Añadir tarjeta
-                        </button>
-                        <button 
-                            onClick={() => { setIsAdding(false); setNewCardTitle(''); }}
-                            style={{
-                                padding: '8px 12px', 
-                                background: 'none', 
-                                border: 'none', 
-                                color: '#42526e', 
-                                cursor: 'pointer',
-                                fontSize: '20px'
-                            }}
-                        >
-                            &times;
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <button 
-                    onClick={() => setIsAdding(true)}
+  const openEditModal = (card) => {
+    setSelectedCard(null);
+    setEditingCard(card);
+    setModalMode('edit');
+  };
+
+  const closeModal = () => {
+    setEditingCard(null);
+    setModalMode(null);
+  };
+
+  return (
+    <div style={{ width: 272, background: '#f1f2f4', borderRadius: 8, padding: 10 }}>
+
+      <h3 style={{color: 'black'}}>{NombreLista} ({cards.length})</h3>
+
+      <Droppable droppableId={String(ListaID)} type="card">
+        {(provided) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            style={{ minHeight: 50 }}
+          >
+            {cards.map((card, index) => (
+              <Draggable
+                key={card.TarjetaID}
+                draggableId={String(card.TarjetaID)}
+                index={index}
+              >
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
                     style={{
-                        width: '100%', 
-                        padding: '8px', 
-                        marginTop: '10px', 
-                        background: 'none', 
-                        border: 'none', 
-                        textAlign: 'left', 
-                        cursor: 'pointer', 
-                        color: '#5e6c84', 
-                        fontWeight: 500,
-                        backgroundColor: 'rgba(9,30,66,.04)',
-                        borderRadius: '5px'
+                      marginBottom: 8,
+                      ...provided.draggableProps.style,
                     }}
-                >
-                    + Añadir una tarjeta
-                </button>
-            )}
-        </div>
-    );
+                  >
+                    <Card
+                      {...card}
+                      onEdit={() => openEditModal(card)}
+                      onDelete={() => handleDeleteCard(card.TarjetaID)}
+                    />
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+
+      <button onClick={openCreateModal}>+ Añadir tarjeta</button>
+
+      {/* DETALLE */}
+      {selectedCard && (
+        <CardDetailModal
+          card={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          onEdit={() => openEditModal(selectedCard)}
+          onDelete={() => handleDeleteCard(selectedCard.TarjetaID)}
+        />
+      )}
+
+      {/* CREAR / EDITAR */}
+      {modalMode && (
+        <AddModal
+          isOpen={true}
+          mode={modalMode}
+          card={editingCard}
+          listaID={ListaID}
+          onClose={closeModal}
+          onCardCreated={refreshBoard}
+        />
+      )}
+    </div>
+  );
 };
 
 export default List;

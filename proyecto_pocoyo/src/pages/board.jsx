@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { DragDropContext, Droppable } from '@hello-pangea/dnd'; 
-import List from './list'
-import CalendarSidebar from './calendarioSideBar';
+import List from './List'
+import CalendarSidebar from './CalendarioSidebar';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 const PROJECT_ID = 1; 
@@ -13,14 +13,10 @@ const Board = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState("");
-
   
   const user = JSON.parse(localStorage.getItem('user'));
   const username = user ? user.username : 'Usuario';
   
-  
-
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -48,7 +44,6 @@ const Board = () => {
         'Content-Type': 'application/json',
       },
     });
-
       
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('token');
@@ -78,10 +73,15 @@ const Board = () => {
   fetchBoardData(date);
 };
 
+useEffect(() => {
+  const today = new Date();
 
-  useEffect(() => {
-    fetchBoardData();
-  }, [navigate]);
+  const formattedToday = today.toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+  setSelectedDate(formattedToday);
+  fetchBoardData(formattedToday);
+}, [navigate]);
+
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId, type } = result;
@@ -140,7 +140,7 @@ const Board = () => {
   if (error) return (<div style={{padding: '50px', color: '#c0392b', textAlign: 'center', backgroundColor: '#fbe8e7', border: '1px solid #c0392b', minHeight: '100vh'}}>{error}</div>);
 
   return (
-   <DragDropContext onDragEnd={onDragEnd}>
+  <DragDropContext onDragEnd={onDragEnd}>
   <div style={{ display: "flex", backgroundColor: '#2c3e50', minHeight: '100vh', color: '#ecf0f1' }}>
     
     {/* === COLUMNA LATERAL DEL CALENDARIO === */}
@@ -157,8 +157,8 @@ const Board = () => {
     backgroundRepeat: "no-repeat", }}>
       <header style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
           <div>
-              <h1 style={{margin: 0}}>Proyecto POCOYO</h1>
-              <p style={{margin: 0, fontSize: '14px'}}>Bienvenido, **{username}**</p>
+              <h1 style={{margin: 0, color: 'black'}}>Proyecto POCOYO</h1>
+              <p style={{margin: 0, fontSize: '14px', color: 'black'}}>Bienvenido, **{username}**</p>
           </div>
           <button 
               onClick={handleLogout}
@@ -176,19 +176,20 @@ const Board = () => {
               >
                   {lists.map((list) => (
                       <List
-                          key={list.ListaID}
-                          list={list}
-                          refreshBoard={fetchBoardData}
+                        key={list.ListaID}
+                        list={list}
+                        refreshBoard={() => fetchBoardData(selectedDate)}
                       />
+
                   ))}
 
                   {provided.placeholder}
               </div>
           )}
-      </Droppable>
+        </Droppable>
+      </div>
     </div>
-  </div>
-</DragDropContext>
+  </DragDropContext>
 
   );
 };
