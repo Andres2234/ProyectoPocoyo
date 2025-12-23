@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd'; 
 import List from './List'
 import CalendarSidebar from './CalendarioSidebar';
+import WatsonChat from "./WatsonChat";
 
 const API_BASE_URL = 'http://localhost:5000/api';
 const PROJECT_ID = 1; 
@@ -140,6 +141,8 @@ useEffect(() => {
   if (error) return (<div style={{padding: '50px', color: '#c0392b', textAlign: 'center', backgroundColor: '#fbe8e7', border: '1px solid #c0392b', minHeight: '100vh'}}>{error}</div>);
 
   return (
+    <>
+    <WatsonChat />
   <DragDropContext onDragEnd={onDragEnd}>
   <div style={{ display: "flex", backgroundColor: '#2c3e50', minHeight: '100vh', color: '#ecf0f1' }}>
     
@@ -190,7 +193,7 @@ useEffect(() => {
       </div>
     </div>
   </DragDropContext>
-
+</>
   );
 };
 

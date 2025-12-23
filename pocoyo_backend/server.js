@@ -23,8 +23,6 @@ app.use(cors());
 app.use(express.json()); 
 
 
-
-
 const getConnection = async () => {
     return await mysql.createConnection(dbConfig);
 };
@@ -449,6 +447,106 @@ cron.schedule('*/1 * * * *', async () => {
         console.error('❌ Error CRON:', err);
     } finally {
         if (connection) await connection.end();
+    }
+});
+
+app.post('/api/pendientes', async (req, res) => {
+    const { day = null, userId = null } = req.body || {};
+    const projectId = 1;
+
+    let connection;
+    try {
+        connection = await getConnection();
+
+        const [lists] = await connection.execute(
+            `
+            SELECT ListaID, NombreLista, Orden
+            FROM Listas
+            WHERE ProyectoID = ?
+            ORDER BY Orden
+            `,
+            [projectId]
+        );
+
+        const [cards] = await connection.execute(
+            `
+            SELECT 
+                c.TarjetaID,
+                c.ListaID,
+                c.Titulo,
+                c.Descripcion,
+                c.Orden,
+                c.FechaLimite,
+                c.HoraNotificacion
+            FROM Tarjetas c
+            INNER JOIN Listas l ON c.ListaID = l.ListaID
+            LEFT JOIN AsignacionesTarjeta a 
+                ON a.TarjetaID = c.TarjetaID
+            WHERE l.ProyectoID = ?
+              AND (? IS NULL OR a.UsuarioID = ?)
+              AND (? IS NULL OR DATE(c.FechaLimite) = ?)
+              AND l.ListaID = 1
+            ORDER BY c.Orden
+            `,
+            [projectId, userId, userId, day, day]
+        );
+
+        const data = lists.map(list => ({
+            ListaID: list.ListaID,
+            NombreLista: list.NombreLista,
+            Orden: list.Orden,
+            cards: cards.filter(c => c.ListaID === list.ListaID)
+        }));
+
+        res.json({ projectId, day, data });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error al obtener pendientes' });
+    } finally {
+        if (connection) connection.end();
+    }
+});
+
+app.get('/api/users/phone', async (req, res) => {
+    let connection;
+
+    try {
+        // Si no mandan user_id, usar 1 por defecto
+        const userId = req.query.user_id || 1;
+
+        connection = await getConnection();
+
+        const [rows] = await connection.execute(
+            `
+            SELECT UsuarioID, NombreUsuario, Telefono
+            FROM Usuarios
+            WHERE UsuarioID = ?
+            `,
+            [userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        const user = rows[0];
+
+        res.json({
+            user_id: user.UsuarioID,
+            nombre: user.NombreUsuario,
+            telefono: `${user.Telefono}` // 📱 prefijo Perú
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo teléfono:', error);
+        res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    } finally {
+        if (connection) connection.end();
     }
 });
 
